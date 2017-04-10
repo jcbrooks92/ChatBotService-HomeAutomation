@@ -29,7 +29,7 @@ namespace FirstBotApp
         static HttpResponseMessage responsemain = null;
         static int j = 0;
 
-
+        //Gather all the current resources and their current status and return the switches array
         static async Task<Switches[]> GetSwitchesAsync(string path)
         {
             Switches[] switches = null;
@@ -46,47 +46,39 @@ namespace FirstBotApp
             return switches;
         }
 
-        private async void CheckForDimmingAttribute(HttpClient client, Activity activity, String[] individualInputWords, HttpResponseMessage responsemain, Switches[] switches)
-        {
-            if (individualInputWords[3] == null)
-            {
-                responsemain = await client.PutAsJsonAsync($"switches/{individualInputWords.ToArray()[1]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
-            }
-            else
-            {
-                responsemain = await client.PutAsJsonAsync($"setLevel/{individualInputWords.ToArray()[3]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
-            }
-
-            return;
-        }
-
+        //Calls to the SmartThings API 
+        //Respond that the device was turned on/off or if there was an incorrect room entered in the response
         private async void calltoSmartThings(HttpClient client, Activity activity, String[] individualInputWords, HttpResponseMessage responsemain, Switches[] switches, ConnectorClient connector)
         {
             try
             {
                 Activity reply1;
-                //responsemain = await client.PutAsJsonAsync($"switches/{individualInputWords.ToArray()[1]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
-                if (individualInputWords.Length<4)
+                //Checking if a dimming value is provided otherwise turn the device on or off ie "turn livingroom on 80" (80 is the dimming value and will be the 4th index in the array) 
+                //vs "turn livingroom on" 
+                if (individualInputWords.Length<4 && individualInputWords.Length>2)
                 {
                     responsemain = await client.PutAsJsonAsync($"switches/{individualInputWords.ToArray()[1]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
                     responsemain.EnsureSuccessStatusCode();
                     switches = await responsemain.Content.ReadAsAsync<Switches[]>();
-                    reply1 = activity.CreateReply($"Successfully turned {individualInputWords.ToArray()[1]} the {individualInputWords.ToArray()[2]} light.");
+                    reply1 = activity.CreateReply($"Successfully turned {individualInputWords.ToArray()[1]} the {individualInputWords.ToArray()[2]} light/device.");
                 }
-                else
+                else if (individualInputWords.Length > 3)
                 {
                     responsemain = await client.PutAsJsonAsync($"setLevel/{individualInputWords.ToArray()[3]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
                     responsemain.EnsureSuccessStatusCode();
                     switches = await responsemain.Content.ReadAsAsync<Switches[]>();
-                    reply1 = activity.CreateReply($"Successfully turned {individualInputWords.ToArray()[1]} the {individualInputWords.ToArray()[2]} light. D = {individualInputWords.ToArray()[3]}");
+                    reply1 = activity.CreateReply($"Successfully turned {individualInputWords.ToArray()[1]} the {individualInputWords.ToArray()[2]} light/device. D = {individualInputWords.ToArray()[3]}");
                 }
-
-                // Deserialize the updated product from the response body.
+                //if "turn on" or "turn off" was passed without a room
+                else
+                {
+                    reply1 = activity.CreateReply($"Error: Incorrect input, ({responsemain.StatusCode}) \n Please input a room or device after the command");
+                }
                 
                 await connector.Conversations.ReplyToActivityAsync(reply1);
                 return;
             }
-
+            //incorrect input: either the room input was incorrect, the API is not responding correctly, or the dimming value is incorrect
             catch
             {
                 
@@ -105,12 +97,11 @@ namespace FirstBotApp
         public async Task<HttpResponseMessage> Post([FromBody]Activity activity)
         {
 
-       
-
             Switches[] switches = null;
             MicrosoftAppCredentials creds = new MicrosoftAppCredentials(ConfigurationManager.AppSettings["MicrosoftappID"], ConfigurationManager.AppSettings["MicrosoftappPassword"]);
 
             ConnectorClient connector = new ConnectorClient(new Uri(activity.ServiceUrl));
+            //making sure to create on instance of the HTTPclient with its headers
             if (j == 0)
             {
                 string accessToken = ConfigurationManager.AppSettings["accessToken"];
@@ -126,7 +117,7 @@ namespace FirstBotApp
                 Activity reply1;
                 string caseInput;
 
-                //Parsing String into words
+                //Parsing String into individual words
                 var parseForSpaces = activity.Text.Where(Char.IsPunctuation).Distinct().ToArray();
                 var individualInputWords = activity.Text.Split().Select(x => x.Trim(parseForSpaces));
                 
@@ -143,24 +134,25 @@ namespace FirstBotApp
                 switch (caseInput.ToLower())
                 {
                     case "turn on":
-                        
+                       
                         calltoSmartThings(client, activity, individualInputWords.ToArray(), responsemain, switches, connector);
                         break;
-                
+                    
+                    //if the first two words are turn off, turn off
                     case "turn off":
                         calltoSmartThings(client, activity, individualInputWords.ToArray(), responsemain, switches, connector);
                         break;
 
-
+                    
+                    //Default will return the current status of all the resources connected to the app
                     default: //"What lights are on?":
                         try
                         {
                             switches = await GetSwitchesAsync("");
-                            //ShowSwitches(switches);
 
                             for (int i = switches.Length - 1; i >= 0; i--)
                             {
-                                reply1 = activity.CreateReply($"Room: {switches[i].name}\tStatus: {switches[i].value}\tDimmerLevel: {switches[i].dimmer}");
+                                reply1 = activity.CreateReply($"Light/Device: {switches[i].name}\tStatus: {switches[i].value}\tDimmerLevel: {switches[i].dimmer}");
                                 responsemain.EnsureSuccessStatusCode();
                                 await connector.Conversations.ReplyToActivityAsync(reply1);
                             }
@@ -172,8 +164,6 @@ namespace FirstBotApp
                         }
                         break;
                 }
-
-                // calculate something for us to return
               
             }
             else
