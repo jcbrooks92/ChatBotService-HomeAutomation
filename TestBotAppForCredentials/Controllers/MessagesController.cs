@@ -46,26 +46,55 @@ namespace FirstBotApp
             return switches;
         }
 
-
-        private async void calltoSmartThings(HttpClient client, Activity activity, String[] individualInputWords, HttpResponseMessage responsemain, Switches[] switches, ConnectorClient connector)
+        private async void CheckForDimmingAttribute(HttpClient client, Activity activity, String[] individualInputWords, HttpResponseMessage responsemain, Switches[] switches)
         {
-            Activity reply1;
-            responsemain = await client.PutAsJsonAsync($"switches/{individualInputWords.ToArray()[1]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
-            responsemain.EnsureSuccessStatusCode();
+            if (individualInputWords[3] == null)
+            {
+                responsemain = await client.PutAsJsonAsync($"switches/{individualInputWords.ToArray()[1]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
+            }
+            else
+            {
+                responsemain = await client.PutAsJsonAsync($"setLevel/{individualInputWords.ToArray()[3]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
+            }
 
-            // Deserialize the updated product from the response body.
-            switches = await responsemain.Content.ReadAsAsync<Switches[]>();
-            reply1 = activity.CreateReply($"Successfully turned {individualInputWords.ToArray()[1]} the {individualInputWords.ToArray()[2]} light");
-            await connector.Conversations.ReplyToActivityAsync(reply1);
             return;
         }
 
-        private async void calltoSmartThingsFailed(Activity activity, String[] individualInputWords, HttpResponseMessage responsemain,ConnectorClient connector)
+        private async void calltoSmartThings(HttpClient client, Activity activity, String[] individualInputWords, HttpResponseMessage responsemain, Switches[] switches, ConnectorClient connector)
         {
-            Activity reply1;
-            reply1 = activity.CreateReply($"Error: Incorrect input, ({responsemain.StatusCode}) \n Room was {individualInputWords.ToArray()[2]}");
-            await connector.Conversations.ReplyToActivityAsync(reply1);
-            return;
+            try
+            {
+                Activity reply1;
+                //responsemain = await client.PutAsJsonAsync($"switches/{individualInputWords.ToArray()[1]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
+                if (individualInputWords.Length<4)
+                {
+                    responsemain = await client.PutAsJsonAsync($"switches/{individualInputWords.ToArray()[1]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
+                    responsemain.EnsureSuccessStatusCode();
+                    switches = await responsemain.Content.ReadAsAsync<Switches[]>();
+                    reply1 = activity.CreateReply($"Successfully turned {individualInputWords.ToArray()[1]} the {individualInputWords.ToArray()[2]} light.");
+                }
+                else
+                {
+                    responsemain = await client.PutAsJsonAsync($"setLevel/{individualInputWords.ToArray()[3]}?room={individualInputWords.ToArray()[2].ToLower()}", switches);
+                    responsemain.EnsureSuccessStatusCode();
+                    switches = await responsemain.Content.ReadAsAsync<Switches[]>();
+                    reply1 = activity.CreateReply($"Successfully turned {individualInputWords.ToArray()[1]} the {individualInputWords.ToArray()[2]} light. D = {individualInputWords.ToArray()[3]}");
+                }
+
+                // Deserialize the updated product from the response body.
+                
+                await connector.Conversations.ReplyToActivityAsync(reply1);
+                return;
+            }
+
+            catch
+            {
+                
+                Activity reply1;
+                reply1 = activity.CreateReply($"Error: Incorrect input, ({responsemain.StatusCode}) \n Room was {individualInputWords.ToArray()[2]}");
+                await connector.Conversations.ReplyToActivityAsync(reply1);
+                return;
+            }
         }
 
 
@@ -109,33 +138,17 @@ namespace FirstBotApp
                 else {
                     caseInput = individualInputWords.ToArray()[0];
                 }
-                
+             
                 //Case for responses back to client
                 switch (caseInput.ToLower())
                 {
                     case "turn on":
-                        try
-                        {
-                            calltoSmartThings(client, activity, individualInputWords.ToArray(), responsemain, switches, connector);
-                        }
-                        catch
-                        {
-                            calltoSmartThingsFailed(activity, individualInputWords.ToArray(),responsemain, connector);
-                        }
+                        
+                        calltoSmartThings(client, activity, individualInputWords.ToArray(), responsemain, switches, connector);
                         break;
                 
-                        
-
-
                     case "turn off":
-                        try
-                        {
-                            calltoSmartThings(client, activity, individualInputWords.ToArray(), responsemain, switches, connector);
-                        }
-                        catch
-                        {
-                            calltoSmartThingsFailed(activity, individualInputWords.ToArray(), responsemain, connector);
-                        }
+                        calltoSmartThings(client, activity, individualInputWords.ToArray(), responsemain, switches, connector);
                         break;
 
 
