@@ -17,7 +17,7 @@ All the private information will be stored in the Application Settings of the Az
 
 In order to get the token I used the Postman to generate it, see this link for creating the token using Postman: https://blog.brooksjc.com/2017/01/30/smartthings-api-creating-a-custom-app-testing-out-the-api-with-postman-part-3/
 
-For more general information about creating this app see this blog post:
+For more general information about the general development of the app see this blog post:
 https://blog.brooksjc.com/2017/04/10/azure-bot-framework-app-with-smartthings-integration/
 
 SmarthThings Applicaiton with API commandlets.
