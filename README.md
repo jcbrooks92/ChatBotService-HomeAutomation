@@ -10,7 +10,7 @@ turn off *room name*               <------------turns off the room light
 turn on *room name* 50             <------------turns on the room light and adjusts the brightness based on a scale of 0-100
 
 *any other command not starting with "turn on" or "turn off" will return the status of your resources"
-
+![Alt text](/ExampleChat.PNG?raw=true "Optional Title")
 The commandlets specifically look for the syntax "turn on/off" otherwise it will return the current status of all your device whether they are on or off and what the dimming level is on. I have not tested this with other resources besides lights, but I believe you should be able to control any device that has on/off and value configurations. 
 
 All the private information will be stored in the Application Settings of the Azure Web App such as the token, Microsoft AppID, AppPassword, and SmartThings Subscription. 
